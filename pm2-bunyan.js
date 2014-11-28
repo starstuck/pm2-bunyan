@@ -60,19 +60,23 @@ function get_bunyan_args() {
         condition = opts.condition;
     }
     if (opt.argv.length > 0) {
-        condition += ' && (' + opt.argv.map(function (proc_name) {
+        if (condition) condition += ' && ';
+        condition += '(' + opt.argv.map(function (proc_name) {
             return 'this.pm2.match(/\\[' + proc_name + '-[0-9]+/)';
         }).join(' || ') + ')';
     }
     if (opts.level) {
         args = args.concat(['-l', opts.level]);
     } else if (condition) {
-        condition += ' || this.level >= ERROR';
+        if (condition) condition += ' || ';
+        condition += 'this.level >= ERROR';
     }
     if (opts.output) {
         args = args.concat(['-o', opts.output]);
     }
-    args = args.concat(['-c', condition]);
+    if (condition) {
+        args = args.concat(['-c', condition]);
+    }
     return args;
 }
 
@@ -104,7 +108,7 @@ function exit() {
 }
 
 
-child = spawn('node_modules/.bin/bunyan', get_bunyan_args(), {
+child = spawn(__dirname + '/node_modules/.bin/bunyan', get_bunyan_args(), {
     stdio: ['pipe', process.stdout, process.stderr]
 });
 
