@@ -1,8 +1,8 @@
 pm2-bunyan
 ==========
 
-Small utility which collects pm2 logs and wraps them in bunyan json format. Bunyan messages are passed through.
+Small utility which collects pm2 logs and filters them through bunyan. Native bunyan messages are passed as they are.
 
 Sample usage
 
-    pm2-bunyan | bunyan -c this.level >= 30
+    pm2-bunyan -c this.name.match(/^my_app:/) -l info
