@@ -1,6 +1,6 @@
 {
   "name": "pm2-bunyan",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Bunyan decorate pm2 logs. Works nicelly with apps productiong bunyan out.",
   "main": "pm2-bunyan.js",
   "scripts": {

@@ -3,8 +3,10 @@
  * Small app to wrap pm2 logs in bunyan json
  */
 
-var VERSION = '0.1.1',
-    
+var VERSION = '0.1.3',
+
+    fs = require('fs'),
+    os = require('os'),
     spawn = require('child_process').spawn,
     ipm2 = require('pm2-interface')(),
 
@@ -43,6 +45,7 @@ var VERSION = '0.1.1',
     ].join("\n")).parseSystem(),
 
     bunyan_default_condition = 'this.level > ERROR',
+    pids_cache = {},
     child;
 
 
@@ -80,19 +83,31 @@ function get_bunyan_args() {
     return args;
 }
 
-function pipe_log(channel, arg){
+function fill_log_entry_pid(entry, proc_info, cb) {
+    fs.readFile(proc_info.pm_pid_path, function(err, data) {
+        if (err) return cb(err);
+        try {
+            entry.pid = parseInt(data);
+        } catch(err) {
+            return cb(err);
+        }
+        return cb(null, entry);
+    });
+}
+
+function sanitize_log_entry(channel, arg, cb) {
     var proc = arg.process,
         data = arg.data || arg,
         str = data.str || data,
         obj;
         
-    if (! data) return;
+    if (! data) return cb(new Error("Missing data in: " + JSON.stringify(arg)));
     try {
         obj = JSON.parse(data);
     } catch (err) {
         obj = {
             name: proc.name,
-            pid: 'pm2:' + proc.pm_id,
+            hostname: os.hostname(),
             level: (channel == 'err') ? 40 : 30,
             time: new Date(arg.at * 1000).toISOString(),
             msg: JSON.stringify(data || arg),
@@ -100,7 +115,15 @@ function pipe_log(channel, arg){
         };
     };
     obj.pm2 = '[' + proc.name + '-' + proc.pm_id + ' (' + channel + ')]';
-    child.stdin.write(JSON.stringify(obj) + '\n');
+    if (! obj.pid)
+        return fill_log_entry_pid(obj, proc, cb);
+    return cb(null, obj);
+}
+
+function pipe_log(channel, arg){
+    sanitize_log_entry(channel, arg, function(err, entry) {
+        if (! err) child.stdin.write(JSON.stringify(entry) + '\n');
+    });
 }
 
 function exit() {
