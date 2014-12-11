@@ -3,12 +3,13 @@
  * Small app to wrap pm2 logs in bunyan json
  */
 
-var VERSION = '0.1.4',
+var VERSION = '0.1.5',
 
     fs = require('fs'),
     os = require('os'),
+    path = require('path'),
     spawn = require('child_process').spawn,
-    ipm2 = require('pm2-interface')(),
+    connect_ipm2 = require('pm2-interface'),
     async = require('async'),
 
     opt = require('node-getopt').create([
@@ -47,6 +48,7 @@ var VERSION = '0.1.4',
 
     bunyan_default_condition = 'this.level > ERROR',
     pids_cache = {},
+    ipm2_opts = {},
     child;
 
 
@@ -156,13 +158,19 @@ function exit() {
     child.stdin.end();
 }
 
+// Workaround for issue reporter at pm2-insterface package:
+// https://github.com/Unitech/pm2-interface/pull/19
+if (process.env.PM2_HOME) {
+    ipm2_opts.rpc_port = path.join(process.env.PM2_HOME, 'rpc.sock');
+    ipm2_opts.sub_port = path.join(process.env.PM2_HOME, 'pub.sock');
+}
 
 child = spawn(__dirname + '/node_modules/.bin/bunyan', get_bunyan_args(), {
     stdio: ['pipe', process.stdout, process.stderr]
 });
 
-ipm2.on('ready', function() {
-    ipm2.bus.on('log:*', pipe_log);
+connect_ipm2(ipm2_opts).on('ready', function(ipm2) {
+    this.bus.on('log:*', pipe_log);
 });
 
 child.stdin.on('close', function() {
