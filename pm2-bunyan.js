@@ -3,7 +3,7 @@
  * Small app to wrap pm2 logs in bunyan json
  */
 
-var VERSION = '0.1.5',
+var VERSION = '0.1.6',
 
     fs = require('fs'),
     os = require('os'),

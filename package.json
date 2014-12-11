@@ -1,6 +1,6 @@
 {
   "name": "pm2-bunyan",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Bunyan decorate pm2 logs. Works nicelly with apps productiong bunyan out.",
   "main": "pm2-bunyan.js",
   "scripts": {
@@ -10,6 +10,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "async": "^0.9.0",
     "bunyan": "^1.2.3",
     "node-getopt": "^0.2.3",
     "pm2-interface": "^2.0.4"
