@@ -3,12 +3,13 @@
  * Small app to wrap pm2 logs in bunyan json
  */
 
-var VERSION = '0.1.3',
+var VERSION = '0.1.4',
 
     fs = require('fs'),
     os = require('os'),
     spawn = require('child_process').spawn,
     ipm2 = require('pm2-interface')(),
+    async = require('async'),
 
     opt = require('node-getopt').create([
         ['l', 'level=LEVEL', 
@@ -98,13 +99,30 @@ function fill_log_entry_pid(entry, proc_info, cb) {
 function sanitize_log_entry(channel, arg, cb) {
     var proc = arg.process,
         data = arg.data || arg,
-        str = data.str || data,
         obj;
-        
+
+    //console.log('Log entry: ' , arg);
+    // Processes in fork mode produce str output, which can span across multiple lines
+    if (data.str) {
+        data = data.str;
+        if (data.indexOf('\n') >= 0){
+            return async.map(data.split('\n'), function (d, c) {
+                d = d.trim();
+                if (!d) return c();
+                return sanitize_log_entry(channel, {
+                    data: d,
+                    process: proc,
+                    at: arg.at
+                }, cb);
+            }, cb);
+        }
+    }
+
     if (! data) return cb(new Error("Missing data in: " + JSON.stringify(arg)));
     try {
         obj = JSON.parse(data);
     } catch (err) {
+        console.error('----- Error parsing: ' + err.toString() + ' ---\n', data);
         obj = {
             name: proc.name,
             hostname: os.hostname(),
@@ -122,7 +140,15 @@ function sanitize_log_entry(channel, arg, cb) {
 
 function pipe_log(channel, arg){
     sanitize_log_entry(channel, arg, function(err, entry) {
-        if (! err) child.stdin.write(JSON.stringify(entry) + '\n');
+        var out;
+        if (err)
+            return console.error(err);
+        if (Array.isArray(entry)) {
+            out = entry.forEach(JSON.stringify).join('\n');
+        } else {
+            out = JSON.stringify(entry);
+        }
+        child.stdin.write(out + '\n');
     });
 }
 
